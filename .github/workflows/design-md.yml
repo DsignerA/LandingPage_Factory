@@ -1,0 +1,48 @@
+name: design.md
+
+on:
+  pull_request:
+    paths:
+      - "src/design/**"
+      - "src/niches/**"
+      - "agents/prompts/design_director.txt"
+      - "agents/prompts/design_director.template.txt"
+      - "scripts/build-niche-design-md.js"
+      - "scripts/build-design-director-prompt.js"
+      - "scripts/diff-niche-design-md.js"
+      - "scripts/lint-design-md.mjs"
+      - ".github/workflows/design-md.yml"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches: [main]
+
+jobs:
+  design-md:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history so the diff job can resolve the PR base ref.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Round-trip test (per-page + per-niche serializer → linter)
+        run: node src/tests/design-md.test.js
+
+      - name: Niche DESIGN.md files are up to date
+        run: npm run design:check-niches
+
+      - name: design_director.txt prompt matches the live spec
+        run: npm run design:check-prompt
+
+      - name: Diff niche DESIGN.md vs base ref (regression gate)
+        if: github.event_name == 'pull_request'
+        run: node scripts/diff-niche-design-md.js --base "origin/${{ github.base_ref }}"

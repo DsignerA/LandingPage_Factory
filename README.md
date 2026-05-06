@@ -104,4 +104,38 @@ inside src/niches/{niche}.
 
 ⸻
 
+DESIGN.md Integration
+
+The factory describes its design decisions using the [DESIGN.md format](https://github.com/google-labs-code/design.md).
+This is a description / QA layer — it does not change the rendered UI.
+
+What it gives us:
+
+* `src/niches/{niche}/DESIGN.md` documents the canonical visual identity for each niche pack
+* every generated preview emits a sibling `{slug}.design.md` describing the design profile that produced it
+* the render pipeline lints each per-page DESIGN.md and flags broken refs, contrast failures, or orphaned tokens as `design_needs_review`
+* CI diffs niche DESIGN.md files between PRs to catch unintended design drift
+* `agents/prompts/design_director.txt` embeds the live spec so the LLM emits valid DESIGN.md output
+
+Scripts:
+
+```bash
+npm run design:lint <file.md>       # lint a single DESIGN.md
+npm run design:build-niches         # regenerate niche DESIGN.md files
+npm run design:check-niches         # CI: fail if niche files are stale
+npm run design:diff                 # diff niche DESIGN.md vs origin/main
+npm run design:build-prompt         # regenerate the agent prompt from the spec
+npm run design:check-prompt         # CI: fail if prompt is stale
+npm run test:design-md              # round-trip: serializer → linter
+```
+
+Direct CLI access (via the package):
+
+```bash
+npx @google/design.md spec
+npx @google/design.md export --format css-tailwind src/niches/dentist/DESIGN.md
+```
+
+⸻
+
 Architecture Overview

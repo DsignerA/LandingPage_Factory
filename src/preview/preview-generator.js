@@ -35,6 +35,12 @@ const buildSiteBrief = require('../data/site-brief-builder');
 const { generate: generatePageSchema } = require('../ai/ai-page-generator');
 const { render } = require('../engine/render-engine');
 
+// ── DESIGN.md serializer + lint gate (optional but always present) ────────────
+let designMdSerializer = null;
+let lintDesignMd = null;
+try { designMdSerializer = require('../design/design-md'); } catch (e) { /* optional */ }
+try { ({ lintDesignMd } = require('../design/design-md-lint')); } catch (e) { /* optional */ }
+
 // ── New pipeline modules (graceful fallback if not yet present) ────────────────
 let resolveNichePack, resolveDesignProfile, generateIntentPlan, resolveVariants,
     composeScenes, generateLocalProof, applyTastePass, validate;
@@ -292,6 +298,8 @@ async function previewGenerator(rawLead, options = {}) {
   // storage module. Otherwise, skip storing and return null preview. Always
   // propagate validation errors to the caller.
   let preview = null;
+  let designMd = null;
+  let designMdLint = null;
   if (previewValidation.valid) {
     const savePayload = {
       lead_id: lead.lead_id,
@@ -307,6 +315,33 @@ async function previewGenerator(rawLead, options = {}) {
     const saved = await storePreview(savePayload, saveOptions);
     const url = 'file://' + saved.path;
     preview = { ...saved, lead_id: lead.lead_id, url };
+
+    // ── 15a. Emit DESIGN.md alongside the HTML and run the lint gate. ──────
+    // The DESIGN.md describes the design decision the factory made for this
+    // page. It is a side artifact for inspection / diffing — it is not used
+    // to re-render the page.
+    if (designMdSerializer && design) {
+      try {
+        const md = designMdSerializer.fromDesignProfile(design, { brief });
+        const designPath = saved.path.replace(/\.html?$/i, '.design.md');
+        await fs.writeFile(designPath, md, 'utf8');
+        designMd = { path: designPath };
+
+        if (lintDesignMd) {
+          const report = await lintDesignMd(md);
+          designMdLint = report;
+          if (!report.ok) {
+            previewValidation.needs_review = true;
+            const errs = report.findings
+              .filter((f) => f.severity === 'error')
+              .map((f) => `[design.md] ${f.path || ''} ${f.message}`.trim());
+            validationErrors.push(...errs);
+          }
+        }
+      } catch (e) {
+        validationErrors.push(`[design.md] failed to emit/lint: ${e.message}`);
+      }
+    }
   }
 
   return {
@@ -319,6 +354,8 @@ async function previewGenerator(rawLead, options = {}) {
     schema: polishedSchema,
     html,
     preview,
+    designMd,
+    designMdLint,
     nichePack,
     localProof,
     validationErrors
