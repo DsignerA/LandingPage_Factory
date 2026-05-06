@@ -1,0 +1,19 @@
+{
+  "name": "landing-builder-factory",
+  "version": "1.0.0",
+  "description": "Lead Intelligence + Preview Generation Factory",
+  "scripts": {
+    "test:normalizer": "node core/lead-normalizer.test.js",
+    "campaign": "node src/cli/run-campaign.js",
+    "preview": "node src/cli/generate-preview.js",
+    "dashboard": "node src/cli/dashboard.js",
+    "smoke": "node src/tests/smoke-campaign.js",
+    "discover:dentists:v2": "node src/lead_discovery/google_places_dentists_v2.js",
+    "discover:dentists:v3": "node src/lead_discovery/google_places_dentists_v3.js"
+  },
+  "dependencies": {
+    "csv-parse": "^5.5.6",
+    "express": "^5.2.1",
+    "playwright": "^1.58.2"
+  }
+}

@@ -1,0 +1,31 @@
+You are the Features Builder.
+
+Edit only the features.js file.
+Return only the full updated contents of features.js.
+Do not include markdown fences.
+Do not explain anything.
+
+Project rules:
+- CDN Vue only
+- Tailwind CDN only
+- no Vite
+- no .vue files
+- do not edit any other file
+
+Design rules:
+- features should feel specific, premium, and easy to scan
+- use a clean responsive grid
+- preserve section hierarchy
+- keep the layout calm and conversion-friendly
+
+Goal:
+Refactor features.js to support props for:
+- heading
+- items
+
+Each item should support:
+- title
+- description
+- optional href
+
+Keep fallback defaults.

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Landing Builder</title>
+
+  <!-- Vue -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-white text-zinc-900">
+
+<div id="app">
+  <!-- Visual Page Builder (schema-driven) -->
+  <page-builder v-model="pageSections"></page-builder>
+
+  <!-- Additional sections rendered as before (outside the schema for now) -->
+  <testimonials-section></testimonials-section>
+  <how-it-works-section></how-it-works-section>
+  <faq-section></faq-section>
+  <cta-section v-bind="page.cta" :design="page.design"></cta-section>
+  <footer-section></footer-section>
+</div>
+
+<!-- Components -->
+<script src="./components/hero.js"></script>
+<script src="./components/features.js"></script>
+<script src="./components/testimonials.js"></script>
+<script src="./components/how-it-works.js"></script>
+<script src="./components/pricing.js"></script>
+<script src="./components/faq.js"></script>
+<script src="./components/cta.js"></script>
+<script src="./components/footer.js"></script>
+
+<!-- Registry, Renderer and Builder -->
+<script src="./components/registry.js"></script>
+<script src="./components/page-renderer.js"></script>
+<script src="./components/page-builder.js"></script>
+
+<!-- Page Data (legacy and schema example) -->
+<script src="./content/page-data.js"></script>
+<script src="./data/page-example.js"></script>
+
+<script>
+function resolvePageData(data) {
+  const safe = (o) => (o && typeof o === 'object') ? o : {}
+  const d = safe(data)
+
+  return {
+    design: safe(d.design),
+    hero: safe(d.hero),
+    features: safe(d.features),
+    pricing: safe(d.pricing),
+    cta: safe(d.cta)
+  }
+}
+
+const app = Vue.createApp({
+  data() {
+    return {
+      // Legacy object-driven page (used by non-schema sections like CTA)
+      page: resolvePageData(window.pageData),
+      // New schema-driven page array for PageRenderer
+      pageSections: Array.isArray(window.pageSections) ? window.pageSections : []
+    }
+  }
+})
+
+app.component('page-renderer', PageRenderer)
+app.component('page-builder', PageBuilder)
+app.component('hero-section', HeroSection)
+app.component('features-section', FeaturesSection)
+app.component('testimonials-section', TestimonialsSection)
+app.component('how-it-works-section', HowItWorksSection)
+app.component('pricing-section', PricingSection)
+app.component('faq-section', FAQSection)
+app.component('cta-section', CTASection)
+app.component('footer-section', FooterSection)
+
+app.mount('#app')
+</script>
+
+</body>
+</html>

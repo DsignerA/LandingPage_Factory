@@ -1,0 +1,4 @@
+lead_id,business_name,niche,city,state,phone,website_url,rating,review_count,notes
+dentist_001,Whole Health Dentistry,dentist,Houston,TX,(832) 452-3377,https://dentistmontrosehouston.com,5.0,9,Holistic family dentistry in Montrose
+hvac_001,Cool Breeze HVAC,hvac,Austin,TX,(512) 555-0192,https://example-hvac-austin.com,4.2,47,Residential and commercial AC repair
+lawyer_001,Martinez Family Law,lawyer,Dallas,TX,(214) 555-0847,,3.8,12,Divorce and custody specialist
