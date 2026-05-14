@@ -18,7 +18,9 @@ const SUPPORTED_TYPES = new Set([
   'services-grid', 'virtual-front-desk', 'chat-demo',
   'reviews', 'insurance-info', 'cta', 'faq', 'how-it-works', 'testimonials',
   // Upgrade model sections
-  'trust-signals', 'upgrade-signal'
+  'trust-signals', 'upgrade-signal',
+  // Restaurant-native sections (extract real client data into dedicated cards)
+  'about-story', 'hours-location'
 ]);
 
 // Intent → component type mapping (for scene-based schema)
@@ -160,6 +162,72 @@ function nicheCategory(niche) {
 
 // ─── Design token resolution ──────────────────────────────────────────────────
 
+// Color utilities for live-site palette derivation.
+function _hexToRgb(hex) {
+  if (!hex || typeof hex !== 'string') return null;
+  const h = hex.replace('#', '');
+  if (!(h.length === 3 || h.length === 6)) return null;
+  const expand = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const r = parseInt(expand.slice(0, 2), 16);
+  const g = parseInt(expand.slice(2, 4), 16);
+  const b = parseInt(expand.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return null;
+  return [r, g, b];
+}
+function _rgbToHex([r, g, b]) {
+  return '#' + [r, g, b].map(n => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')).join('');
+}
+function _mix(rgb, target, amount) {
+  return rgb.map((c, i) => c + (target[i] - c) * amount);
+}
+function _lighten(hex, amount) {
+  const rgb = _hexToRgb(hex); if (!rgb) return hex;
+  return _rgbToHex(_mix(rgb, [255, 255, 255], amount));
+}
+function _darken(hex, amount) {
+  const rgb = _hexToRgb(hex); if (!rgb) return hex;
+  return _rgbToHex(_mix(rgb, [0, 0, 0], amount));
+}
+function _relativeLuminance([r, g, b]) {
+  const lin = (c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+/**
+ * Build a complete palette token set from a scraped brand color.
+ * Used to override the niche fallback when the live site reveals real brand colors.
+ */
+function deriveCustomPalette(brandColors) {
+  if (!brandColors || typeof brandColors !== 'object') return null;
+  const primary = brandColors.primary;
+  if (!_hexToRgb(primary)) return null;
+  const secondary = _hexToRgb(brandColors.secondary) ? brandColors.secondary : _darken(primary, 0.18);
+  const accent    = secondary !== primary ? secondary : _lighten(primary, 0.25);
+  const lum = _relativeLuminance(_hexToRgb(primary));
+  // Choose neutral text on light background; if primary is light, darken text a bit more
+  const text       = '#0f172a';
+  const textMuted  = '#4a5563';
+  const surface    = '#ffffff';
+  const bg         = _lighten(primary, 0.94);
+  const surfaceAlt = _lighten(primary, 0.88);
+  return {
+    bg, surface, surfaceAlt,
+    primary,
+    primaryHover: _darken(primary, 0.12),
+    primaryLight: _lighten(primary, 0.82),
+    primaryRing:  _lighten(primary, 0.55),
+    secondary,
+    accent,
+    border:       _lighten(primary, 0.75),
+    text,
+    textMuted,
+    textInverse:  lum > 0.55 ? '#0f172a' : '#ffffff'
+  };
+}
+
 // Fallback palettes (used when design-director is not wired yet)
 const FALLBACK_PALETTES = {
   healthcare_local:    { bg:'#faf9f6', surface:'#ffffff', surfaceAlt:'#f4f7f7', primary:'#1a6b6b', primaryHover:'#155858', primaryLight:'#e8f4f4', primaryRing:'#7bbfbf', secondary:'#2d8c8c', accent:'#c4922a', border:'#d8e4e4', text:'#0f1c1c', textMuted:'#4a6464', textInverse:'#ffffff' },
@@ -216,17 +284,50 @@ function resolveDesign(brief, designProfile) {
 
   // Fallback: derive from brief.theme or niche
   const theme = (brief && brief.theme) || {};
-  const palette = FALLBACK_PALETTES[cat] || FALLBACK_PALETTES.general;
+
+  // Palette priority:
+  //   1. Custom palette derived from the live site's scraped brand colors
+  //   2. Vendored design-system preset (e.g. 'claude', 'warm-editorial')
+  //   3. Niche-category fallback
+  const siteIdentity = brief && brief.siteIdentity;
+  const scrapedColors = siteIdentity && siteIdentity.brandColors;
+  const customPalette = deriveCustomPalette(scrapedColors);
+  const dsColors = brief && brief.designSystem && brief.designSystem.palette;
+  const dsPalette = dsColors ? deriveCustomPalette({
+    primary: dsColors.primary, secondary: dsColors.accent
+  }) : null;
+  const palette = customPalette || dsPalette || FALLBACK_PALETTES[cat] || FALLBACK_PALETTES.general;
+
+  // Fonts: scraped real fonts > design-system preset fonts > Inter fallback.
+  const fonts = siteIdentity && siteIdentity.brandFonts;
+  const dsFonts = brief && brief.designSystem && brief.designSystem.fonts;
+  const REAL_FONT = /^[A-Za-z][\w\s\-]+$/;
+  const SYSTEM_FONTS = /^(inherit|initial|unset|sans-serif|serif|system-ui|-apple-system|BlinkMacSystemFont|monospace|cursive|fantasy)$/i;
+  const fontHeading = (fonts && fonts.heading && REAL_FONT.test(fonts.heading) && !SYSTEM_FONTS.test(fonts.heading)) ? fonts.heading
+                    : (dsFonts && dsFonts.heading && REAL_FONT.test(dsFonts.heading)) ? dsFonts.heading
+                    : null;
+  const fontBody    = (fonts && fonts.body    && REAL_FONT.test(fonts.body)    && !SYSTEM_FONTS.test(fonts.body))    ? fonts.body
+                    : (dsFonts && dsFonts.body    && REAL_FONT.test(dsFonts.body))    ? dsFonts.body
+                    : null;
+  const typography = (fontHeading || fontBody)
+    ? Object.assign({}, FALLBACK_TYPOGRAPHY, {
+        fontFamilyHeading: fontHeading ? `"${fontHeading}", ${FALLBACK_TYPOGRAPHY.fontFamilyHeading}` : FALLBACK_TYPOGRAPHY.fontFamilyHeading,
+        fontFamilyBody:    fontBody    ? `"${fontBody}", ${FALLBACK_TYPOGRAPHY.fontFamilyBody}`       : FALLBACK_TYPOGRAPHY.fontFamilyBody
+      })
+    : FALLBACK_TYPOGRAPHY;
+
   return {
     palette,
-    typography: FALLBACK_TYPOGRAPHY,
+    typography,
     layout: FALLBACK_LAYOUT,
     motion: FALLBACK_MOTION,
     heroVariant: toStringSafe(theme.heroStyle) || (cat === 'b2b_saas' ? 'centered_product' : 'split_premium'),
     backgroundEffect: toStringSafe(theme.backgroundEffect) || 'soft_gradient',
     accentStyle: 'none',
     cardStyle: 'soft_elevated',
-    profile: 'fallback'
+    profile: customPalette ? 'custom_brand'
+           : dsPalette ? `ds:${brief.designSystem && brief.designSystem.name || 'unknown'}`
+           : 'fallback'
   };
 }
 
@@ -326,8 +427,11 @@ function buildCssVariables(design) {
     .ds-label { font-size: var(--ds-type-label-size); font-weight: var(--ds-type-label-weight); letter-spacing: var(--ds-type-label-ls); text-transform: uppercase; color: var(--ds-primary); }
 
     /* Scroll reveal */
-    .fade-up { opacity: 0; transform: translateY(var(--ds-reveal-translate)); transition: opacity var(--ds-reveal-duration) cubic-bezier(0.16,1,0.3,1), transform var(--ds-reveal-duration) cubic-bezier(0.16,1,0.3,1); }
-    .fade-up.visible { opacity: 1; transform: translateY(0); }
+    /* Scroll-reveal is opt-in: only apply opacity:0 once JS is confirmed to
+       drive the IntersectionObserver. This keeps the page visible for crawlers,
+       no-JS visitors, and full-page screenshots taken before reveals fire. */
+    .js-reveal .fade-up { opacity: 0; transform: translateY(var(--ds-reveal-translate)); transition: opacity var(--ds-reveal-duration) cubic-bezier(0.16,1,0.3,1), transform var(--ds-reveal-duration) cubic-bezier(0.16,1,0.3,1); }
+    .js-reveal .fade-up.visible { opacity: 1; transform: translateY(0); }
 
     /* Background effects */
     .bg-radial-mesh { background-image: radial-gradient(ellipse at 20% 50%, color-mix(in srgb, var(--ds-primary) 8%, transparent) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, color-mix(in srgb, var(--ds-accent) 6%, transparent) 0%, transparent 50%); }
@@ -353,7 +457,11 @@ function buildCssVariables(design) {
 function buildMotionScript(motion) {
   if (!motion.enableScrollReveal) return '';
   return `
-    // Motion: scroll-reveal with IntersectionObserver
+    // Motion: scroll-reveal with IntersectionObserver.
+    // js-reveal is the gate the CSS uses to actually hide .fade-up elements
+    // before they enter the viewport — see the .js-reveal scoping in styles.
+    // Without this flag, the page stays visible (good for SSR/screenshots/no-JS).
+    document.documentElement.classList.add('js-reveal');
     (function() {
       var staggerDelay = ${parseInt(motion.staggerDelay) || 80};
       var observer = new IntersectionObserver(function(entries) {
@@ -528,13 +636,21 @@ function buildHeader(brief, sections, docTitle, design) {
     ? `<a href="${htmlEscape(secondaryCta.href || '#')}" class="ds-btn-outline" style="font-size:0.875rem;padding:0.5rem 1rem">${htmlEscape(secondaryCta.label || 'Learn More')}</a>`
     : (phone ? `<a href="tel:${htmlEscape(phone)}" class="ds-btn-ghost" style="font-size:0.875rem;padding:0.5rem 1rem">Call Us</a>` : '');
 
+  // Logo: scraped brand mark wins; otherwise a colored square as a stand-in.
+  const brand = (brief && brief.brand) || {};
+  const logoUrl = brand.logoUrl || '';
+  const brandName = toStringSafe(brand.name || '') || toStringSafe(docTitle);
+  const logoEl = logoUrl
+    ? `<img src="${htmlEscape(logoUrl)}" alt="${htmlEscape(brandName)} logo" style="height:2.5rem;width:auto;max-width:14rem;object-fit:contain;display:block" />`
+    : `<div style="width:2.25rem;height:2.25rem;border-radius:0.5rem;background:var(--ds-primary)"></div>`;
+
   return `
   <header class="ds-header">
     <div class="ds-container" style="display:flex;align-items:center;justify-content:space-between;padding-top:0.75rem;padding-bottom:0.75rem">
       <div style="display:flex;align-items:center;gap:0.75rem">
-        <div style="width:2.25rem;height:2.25rem;border-radius:0.5rem;background:var(--ds-primary)"></div>
-        <div>
-          <div style="font-weight:800;font-size:1.0625rem;line-height:1.2;font-family:var(--ds-font-heading)" id="site-brand">${htmlEscape(docTitle)}</div>
+        ${logoEl}
+        <div ${logoUrl ? 'style="display:none"' : ''}>
+          <div style="font-weight:800;font-size:1.0625rem;line-height:1.2;font-family:var(--ds-font-heading)" id="site-brand">${htmlEscape(brandName)}</div>
           <div style="font-size:0.75rem;color:var(--ds-text-muted)" id="site-location" aria-live="polite"></div>
         </div>
       </div>
@@ -867,6 +983,16 @@ ${footer}
 ${floatingCta}
 ${stickyBar}
 
+  <!-- Page theme + sections MUST be injected before any component scripts.
+       Some components read window.pageTheme at module load time to pick their
+       template (e.g. hero.js → heroVariant), so this script tag has to run
+       first or every page falls back to the default variant. -->
+  <script>
+    window.pageSections = ${schemaJson};
+    window.pageTheme = ${themeJson};
+    window.pageLocalProof = ${localProofJson};
+  </script>
+
   <!-- Canonical component scripts (src/components/ is the source of truth) -->
   <script src="${tp('src/components/missing-opportunities.js')}"></script>
   <script src="${tp('src/components/services-grid.js')}"></script>
@@ -878,6 +1004,9 @@ ${stickyBar}
   <!-- Upgrade model components -->
   <script src="${tp('src/components/trust-signals.js')}"></script>
   <script src="${tp('src/components/upgrade-signal.js')}"></script>
+  <!-- Restaurant-native sections -->
+  <script src="${tp('src/components/about-story.js')}"></script>
+  <script src="${tp('src/components/hours-location.js')}"></script>
 
   <!-- Shared components -->
   <script src="${tp('components/hero.js')}"></script>
@@ -899,10 +1028,6 @@ ${stickyBar}
   <script src="${tp('components/page-renderer.js')}"></script>
 
   <script>
-    window.pageSections = ${schemaJson};
-    window.pageTheme = ${themeJson};
-    window.pageLocalProof = ${localProofJson};
-
     const app = Vue.createApp({
       data() { return { pageSections: window.pageSections || [], pageTheme: window.pageTheme || {} }; }
     });

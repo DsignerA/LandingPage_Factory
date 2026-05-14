@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bookbinders — Old Original Seafood &amp; Steakhouse · Richmond, VA</title>
+  <meta name="description" content="For three generations, Old Original Bookbinder's Seafood &amp; Steakhouse has hosted celebrities and presidents. Now serving Richmond's Tobacco Row. Reserve a table at 2306 East Cary Street.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: #FAF6EC;
+      --paper: #F2EBDB;
+      --ink: #1A140E;
+      --espresso: #1B130E;
+      --cream: #F5EFE6;
+      --muted: #6E6356;
+      --muted-dark: #A89D8E;
+      --gold: #FFC857;
+      --gold-dark: #C99A2E;
+      --red: #ED1E27;
+      --border: rgba(26, 20, 14, 0.12);
+      --border-dark: rgba(245, 239, 230, 0.16);
+    }
+    html, body { background: var(--bg); }
+    html { scroll-behavior: smooth; }
+    body {
+      color: var(--ink);
+      font-family: 'Helvetica Neue', Arial, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    .font-display {
+      font-family: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+      font-style: italic;
+      letter-spacing: -0.012em;
+    }
+    .font-display-roman {
+      font-family: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+      font-style: normal;
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.24em;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .hero-bg {
+      background-image:
+        linear-gradient(180deg, rgba(10,7,4,0.28) 0%, rgba(10,7,4,0.40) 45%, rgba(10,7,4,0.82) 100%),
+        url('https://static.wixstatic.com/media/c3cf0c_0a60a2b9fde04c1a9e4ca55ae045db18~mv2.jpg/v1/fill/w_1400,h_767,al_c/c3cf0c_0a60a2b9fde04c1a9e4ca55ae045db18~mv2.jpg');
+      background-size: cover;
+      background-position: center;
+    }
+    /* NAV */
+    .nav {
+      transition: background-color 240ms ease, border-color 240ms ease, color 240ms ease;
+      background: linear-gradient(180deg, rgba(10,7,4,0.55) 0%, rgba(10,7,4,0) 100%);
+      color: var(--cream);
+      border-bottom: 1px solid transparent;
+    }
+    .nav.nav-solid {
+      background: rgba(20, 14, 10, 0.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom-color: var(--border-dark);
+    }
+    .nav .nav-link {
+      color: var(--cream);
+      transition: color 160ms ease;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    }
+    .nav.nav-solid .nav-link { text-shadow: none; }
+    .nav .nav-link:hover { color: var(--gold); }
+    .nav-logo {
+      height: 38px;
+      width: auto;
+      filter: drop-shadow(0 1px 6px rgba(0,0,0,0.45));
+    }
+    /* Buttons */
+    .btn-gold {
+      background: var(--gold);
+      color: var(--ink);
+      border: 1px solid var(--gold-dark);
+      letter-spacing: 0.10em;
+      font-weight: 600;
+      transition: all 200ms ease;
+      white-space: nowrap;
+    }
+    .btn-gold:hover {
+      background: var(--gold-dark);
+      color: var(--cream);
+    }
+    .btn-ghost-light {
+      background: transparent;
+      color: var(--cream);
+      border: 1px solid rgba(245, 239, 230, 0.45);
+      letter-spacing: 0.10em;
+      font-weight: 600;
+      transition: all 200ms ease;
+      white-space: nowrap;
+    }
+    .btn-ghost-light:hover {
+      background: rgba(245, 239, 230, 0.08);
+      border-color: var(--cream);
+    }
+    .btn-ghost-dark {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--ink);
+      letter-spacing: 0.10em;
+      font-weight: 600;
+      transition: all 200ms ease;
+      white-space: nowrap;
+    }
+    .btn-ghost-dark:hover { background: var(--ink); color: var(--cream); }
+    /* Decor */
+    .rule-gold {
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--gold-dark), transparent);
+    }
+    /* Menu card */
+    .menu-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      transition: transform 240ms ease, border-color 240ms ease, background-color 240ms ease;
+    }
+    .menu-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--gold-dark);
+      background: #EFE6CF;
+    }
+    /* FAQ */
+    details {
+      border-top: 1px solid var(--border);
+    }
+    details:last-of-type { border-bottom: 1px solid var(--border); }
+    details > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 24px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary > span:first-child {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: clamp(18px, 2.2vw, 22px);
+      line-height: 1.3;
+    }
+    details[open] .faq-icon { transform: rotate(45deg); border-color: var(--gold-dark); color: var(--gold-dark); }
+    .faq-icon {
+      display: inline-flex;
+      width: 32px; height: 32px;
+      align-items: center; justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      transition: transform 200ms ease, color 200ms ease, border-color 200ms ease;
+      flex-shrink: 0;
+      color: var(--muted);
+    }
+    .faq-body {
+      padding: 0 0 26px 0;
+      color: var(--muted);
+      max-width: 68ch;
+      line-height: 1.7;
+    }
+    /* Section spacing */
+    section.section {
+      padding-top: clamp(72px, 9vw, 128px);
+      padding-bottom: clamp(72px, 9vw, 128px);
+    }
+    /* Subtle paper grain on cream sections */
+    .paper-grain {
+      background-image:
+        radial-gradient(rgba(26,20,14,0.025) 1px, transparent 1px),
+        radial-gradient(rgba(26,20,14,0.018) 1px, transparent 1px);
+      background-size: 3px 3px, 7px 7px;
+      background-position: 0 0, 1px 2px;
+    }
+    /* Roman numerals */
+    .numeral {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-style: normal;
+      letter-spacing: 0.04em;
+    }
+    /* Hide nav links on small screens */
+    @media (max-width: 880px) {
+      .nav-links { display: none; }
+    }
+    /* Prevent hero text from getting too cramped on small screens */
+    @media (max-width: 480px) {
+      .hero-bg { background-position: 60% center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav id="nav" class="nav fixed top-0 left-0 right-0 z-50">
+  <div class="max-w-7xl mx-auto px-6 md:px-10 h-20 flex items-center justify-between gap-4">
+    <a href="#top" class="flex items-center gap-3 shrink-0" aria-label="Bookbinders home">
+      <img src="https://static.wixstatic.com/media/c3cf0c_bcd8551380464497861f3c253d090719~mv2.png/v1/crop/x_114,y_0,w_2065,h_1046/fill/w_336,h_159,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/ModernLogo-01.png"
+           alt="Bookbinders" class="nav-logo">
+    </a>
+    <div class="nav-links flex items-center gap-9 text-[13px]">
+      <a href="#menu" class="nav-link">Menu</a>
+      <a href="#story" class="nav-link">Our Story</a>
+      <a href="#events" class="nav-link">Private Events</a>
+      <a href="#visit" class="nav-link">Visit</a>
+      <a href="#faq" class="nav-link">FAQ</a>
+    </div>
+    <a href="#reserve" class="btn-gold inline-flex items-center px-5 py-2.5 text-[11px]">Reserve a Table</a>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header id="top" class="hero-bg min-h-[100svh] flex items-end pt-28 pb-16 md:pb-24">
+  <div class="max-w-7xl mx-auto px-6 md:px-10 w-full">
+    <div class="max-w-3xl" style="color:var(--cream);">
+      <div class="eyebrow mb-6" style="color:var(--gold);">Old Original Bookbinder's · Est. Philadelphia</div>
+      <h1 class="font-display leading-[0.98]" style="font-size:clamp(2.6rem,7vw,6rem);">
+        Three&nbsp;generations<br>
+        of celebrities,<br>
+        presidents, and steaks.
+      </h1>
+      <p class="mt-8 text-lg md:text-xl max-w-2xl" style="color:rgba(245,239,230,0.86);">
+        Born in Philadelphia. Now hosting Richmond's Tobacco Row.
+        Seafood, steaks, and a table that has seated history.
+      </p>
+      <div class="mt-10 flex flex-wrap items-center gap-4">
+        <a href="#reserve" class="btn-gold inline-flex items-center px-8 py-4 text-[11px]">Reserve a Table</a>
+        <a href="tel:8046436900" class="btn-ghost-light inline-flex items-center px-8 py-4 text-[11px]">Call (804) 643-6900</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ LEGACY RIBBON ============ -->
+<section style="background:var(--espresso); color:var(--cream); border-top:1px solid rgba(201,154,46,0.30); border-bottom:1px solid rgba(201,154,46,0.30);">
+  <div class="max-w-6xl mx-auto px-6 md:px-10 py-9 md:py-11 text-center">
+    <p class="font-display text-xl md:text-2xl" style="color:rgba(245,239,230,0.88);">
+      Hosting celebrities, presidents, and three generations of guests.
+    </p>
+  </div>
+</section>
+
+<!-- ============ MENU HIGHLIGHTS ============ -->
+<section id="menu" class="section paper-grain">
+  <div class="max-w-7xl mx-auto px-6 md:px-10">
+    <div class="grid md:grid-cols-12 gap-10 items-end mb-14">
+      <div class="md:col-span-7">
+        <div class="eyebrow mb-4" style="color:var(--muted);">The Table</div>
+        <h2 class="font-display leading-[1.02]" style="font-size:clamp(2.2rem,5vw,4rem);">
+          The standard hasn't<br>moved in a hundred years.
+        </h2>
+      </div>
+      <div class="md:col-span-5">
+        <p class="text-lg leading-relaxed" style="color:var(--muted);">
+          Hand-selected steaks, seafood drawn from a name built on it, and a wine list that earns its place at the table.
+          Dishes change with the season; the standard doesn't.
+        </p>
+      </div>
+    </div>
+
+    <!-- Wide feature image -->
+    <div class="relative mb-14 overflow-hidden" style="border:1px solid var(--border);">
+      <img src="https://static.wixstatic.com/media/c3cf0c_5412ea0a4a574909b62fbcaeae54a4ca~mv2_d_3000_1529_s_2.jpg/v1/fill/w_1280,h_465,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/c3cf0c_5412ea0a4a574909b62fbcaeae54a4ca~mv2_d_3000_1529_s_2.jpg"
+           alt="Inside Bookbinders on Tobacco Row"
+           class="w-full object-cover"
+           style="height:clamp(240px,38vw,520px);">
+    </div>
+
+    <!-- 4 categorical cards -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <a href="#reserve" class="menu-card p-7 group block">
+        <div class="eyebrow numeral mb-5" style="color:var(--gold-dark);">No. 01</div>
+        <h3 class="font-display-roman text-2xl mb-3">Prime Cuts</h3>
+        <p class="leading-relaxed text-[15px]" style="color:var(--muted);">
+          Hand-selected steaks, dry-aged for character, finished simply.
+        </p>
+        <div class="mt-6 eyebrow transition-colors" style="color:var(--ink);">View Menu →</div>
+      </a>
+      <a href="#reserve" class="menu-card p-7 group block">
+        <div class="eyebrow numeral mb-5" style="color:var(--gold-dark);">No. 02</div>
+        <h3 class="font-display-roman text-2xl mb-3">From the Sea</h3>
+        <p class="leading-relaxed text-[15px]" style="color:var(--muted);">
+          Three generations of trust in the seafood half of the name.
+        </p>
+        <div class="mt-6 eyebrow transition-colors" style="color:var(--ink);">View Menu →</div>
+      </a>
+      <a href="#reserve" class="menu-card p-7 group block">
+        <div class="eyebrow numeral mb-5" style="color:var(--gold-dark);">No. 03</div>
+        <h3 class="font-display-roman text-2xl mb-3">Starters &amp; Raw Bar</h3>
+        <p class="leading-relaxed text-[15px]" style="color:var(--muted);">
+          Oysters, crab cakes, classics — the way they ought to be.
+        </p>
+        <div class="mt-6 eyebrow transition-colors" style="color:var(--ink);">View Menu →</div>
+      </a>
+      <a href="#reserve" class="menu-card p-7 group block">
+        <div class="eyebrow numeral mb-5" style="color:var(--gold-dark);">No. 04</div>
+        <h3 class="font-display-roman text-2xl mb-3">Wine &amp; Spirits</h3>
+        <p class="leading-relaxed text-[15px]" style="color:var(--muted);">
+          A list curated to meet the cut, the catch, and the occasion.
+        </p>
+        <div class="mt-6 eyebrow transition-colors" style="color:var(--ink);">View List →</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OUR STORY ============ -->
+<section id="story" class="section" style="background:var(--paper); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+  <div class="max-w-7xl mx-auto px-6 md:px-10">
+    <div class="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
+      <div class="order-2 md:order-1">
+        <img src="https://static.wixstatic.com/media/c3cf0c_b7d55f7eb82743e4a4bff4e361cfc14c~mv2.jpg/v1/fill/w_1280,h_757,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/c3cf0c_b7d55f7eb82743e4a4bff4e361cfc14c~mv2.jpg"
+             alt="Bookbinders dining room on Tobacco Row"
+             class="w-full object-cover"
+             style="aspect-ratio: 4/3; border:1px solid var(--border);">
+      </div>
+      <div class="order-1 md:order-2">
+        <div class="eyebrow mb-4" style="color:var(--muted);">Our Story</div>
+        <h2 class="font-display leading-[1.05] mb-7" style="font-size:clamp(2.2rem,5vw,3.8rem);">
+          Three generations,<br>two cities, one&nbsp;table.
+        </h2>
+        <p class="text-lg leading-relaxed mb-5" style="color:var(--muted);">
+          For three generations, Old Original Bookbinder's Seafood &amp; Steakhouse has hosted celebrities and presidents.
+          Born in Philadelphia, this historic steakhouse is now located in Richmond's Tobacco Row.
+        </p>
+        <p class="text-lg leading-relaxed mb-9" style="color:var(--muted);">
+          The room is dim, the leather is broken in, and the kitchen still answers to the same question every generation has asked: is it perfect yet?
+        </p>
+        <a href="#reserve" class="btn-ghost-dark inline-flex items-center px-7 py-4 text-[11px]">Reserve a Table</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IN GOOD COMPANY ============ -->
+<section class="section">
+  <div class="max-w-7xl mx-auto px-6 md:px-10">
+    <div class="text-center mb-12">
+      <div class="eyebrow mb-4" style="color:var(--gold-dark);">In Good Company</div>
+      <h2 class="font-display leading-[1.05] max-w-3xl mx-auto" style="font-size:clamp(2rem,4.5vw,3.4rem);">
+        Some rooms remember every&nbsp;conversation.<br>This is one of them.
+      </h2>
+    </div>
+    <div class="rule-gold max-w-md mx-auto mb-14"></div>
+    <div class="grid md:grid-cols-3 gap-12 md:gap-6 text-center">
+      <div>
+        <div class="font-display-roman text-6xl mb-3" style="color:var(--gold-dark);">III</div>
+        <div class="eyebrow mb-3" style="color:var(--muted);">Generations</div>
+        <p class="max-w-xs mx-auto" style="color:var(--muted);">Of the same family. Of the same standard.</p>
+      </div>
+      <div>
+        <div class="font-display-roman text-6xl mb-3" style="color:var(--gold-dark);">II</div>
+        <div class="eyebrow mb-3" style="color:var(--muted);">Cities</div>
+        <p class="max-w-xs mx-auto" style="color:var(--muted);">Philadelphia raised it. Richmond keeps it.</p>
+      </div>
+      <div>
+        <div class="font-display-roman text-6xl mb-3" style="color:var(--gold-dark);">I</div>
+        <div class="eyebrow mb-3" style="color:var(--muted);">Table</div>
+        <p class="max-w-xs mx-auto" style="color:var(--muted);">Yours, when you reserve it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RESERVE CALLOUT ============ -->
+<section id="reserve" style="background:var(--espresso); color:var(--cream);">
+  <div class="max-w-5xl mx-auto px-6 md:px-10 py-24 md:py-32 text-center">
+    <div class="eyebrow mb-5" style="color:var(--gold);">Reservations</div>
+    <h2 class="font-display leading-[1.02] mb-8" style="font-size:clamp(2.4rem,5.5vw,4.4rem);">
+      A seat at Bookbinders<br>is a quieter kind of luxury.
+    </h2>
+    <p class="text-lg max-w-2xl mx-auto mb-10" style="color:rgba(245,239,230,0.78);">
+      Reserve by phone, or speak to the team about a private room.
+      Walk-ins welcome at the bar.
+    </p>
+    <div class="flex flex-wrap items-center justify-center gap-4">
+      <a href="tel:8046436900" class="btn-gold inline-flex items-center px-9 py-5 text-[11px]">Reserve a Table</a>
+      <a href="tel:8046436900" class="btn-ghost-light inline-flex items-center px-9 py-5 text-[11px]">Call (804) 643-6900</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOURS / LOCATION ============ -->
+<section id="visit" class="section paper-grain">
+  <div class="max-w-7xl mx-auto px-6 md:px-10">
+    <div class="grid md:grid-cols-12 gap-10 md:gap-16 items-start">
+      <div class="md:col-span-5">
+        <div class="eyebrow mb-4" style="color:var(--muted);">Visit</div>
+        <h2 class="font-display leading-[1.02] mb-6" style="font-size:clamp(2rem,4.5vw,3.4rem);">On Tobacco Row.</h2>
+        <p class="text-lg leading-relaxed max-w-md" style="color:var(--muted);">
+          A short walk from Shockoe Slip. Street parking on East Cary and a few paid lots within a block.
+        </p>
+      </div>
+      <div class="md:col-span-7 grid sm:grid-cols-2 gap-10">
+        <div>
+          <div class="eyebrow mb-3" style="color:var(--muted);">Address</div>
+          <p class="font-display-roman text-xl leading-snug mb-3">
+            2306 East Cary Street<br>Richmond, VA
+          </p>
+          <a href="https://maps.google.com/?q=2306+East+Cary+Street+Richmond+VA" target="_blank" rel="noopener"
+             class="eyebrow hover:underline" style="color:var(--gold-dark);">Get Directions →</a>
+        </div>
+        <div>
+          <div class="eyebrow mb-3" style="color:var(--muted);">Contact</div>
+          <p class="font-display-roman text-xl leading-snug mb-3">
+            <a href="tel:8046436900" class="hover:underline" style="color:var(--ink);">(804) 643-6900</a>
+          </p>
+          <p class="text-sm" style="color:var(--muted);">
+            Open for dinner. Please call to confirm hours and reservations.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRIVATE EVENTS ============ -->
+<section id="events" style="background:var(--espresso); color:var(--cream);">
+  <div class="max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-32">
+    <div class="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
+      <div>
+        <img src="https://static.wixstatic.com/media/c3cf0c_d66f3cad996b4ac289b95618d5fb166f~mv2_d_2400_1600_s_2.jpg/v1/fill/w_1280,h_900,al_t,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/c3cf0c_d66f3cad996b4ac289b95618d5fb166f~mv2_d_2400_1600_s_2.jpg"
+             alt="Private dining at Bookbinders"
+             class="w-full object-cover"
+             style="aspect-ratio: 4/5; border:1px solid rgba(201,154,46,0.20);">
+      </div>
+      <div>
+        <div class="eyebrow mb-4" style="color:var(--gold);">Private Events</div>
+        <h2 class="font-display leading-[1.02] mb-7" style="font-size:clamp(2rem,4.8vw,3.8rem);">
+          The kind of night<br>people still talk about.
+        </h2>
+        <p class="text-lg leading-relaxed mb-5" style="color:rgba(245,239,230,0.82);">
+          Rehearsal dinners, anniversaries, corporate gatherings, and quiet rooms for the conversations that matter.
+        </p>
+        <p class="text-lg leading-relaxed mb-9" style="color:rgba(245,239,230,0.82);">
+          Our team builds the menu, the wine pairings, and the room around the night you have in mind.
+        </p>
+        <a href="tel:8046436900" class="btn-ghost-light inline-flex items-center px-7 py-4 text-[11px]">Inquire — (804) 643-6900</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq" class="section">
+  <div class="max-w-4xl mx-auto px-6 md:px-10">
+    <div class="text-center mb-14">
+      <div class="eyebrow mb-4" style="color:var(--muted);">Good Questions</div>
+      <h2 class="font-display leading-[1.02]" style="font-size:clamp(2rem,4.5vw,3.4rem);">Before you arrive.</h2>
+    </div>
+    <div>
+      <details>
+        <summary>
+          <span>Do you take reservations?</span>
+          <span class="faq-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="faq-body">
+          Yes. Reservations are the best way to ensure a table on weekends and during peak season.
+          Walk-ins are welcome at the bar when space allows. Call (804) 643-6900 to book.
+        </div>
+      </details>
+      <details>
+        <summary>
+          <span>Is there a dress code?</span>
+          <span class="faq-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="faq-body">
+          Smart casual is the room's natural tempo — a collared shirt or equivalent, comfortable closed-toe shoes.
+          Jackets are welcome but not required.
+        </div>
+      </details>
+      <details>
+        <summary>
+          <span>Where do guests park?</span>
+          <span class="faq-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="faq-body">
+          Street parking is available along East Cary Street, with paid lots within a short walk.
+          Please call ahead for valet availability during private events.
+        </div>
+      </details>
+      <details>
+        <summary>
+          <span>Can you host a private event?</span>
+          <span class="faq-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="faq-body">
+          Yes. We host rehearsal dinners, anniversaries, corporate gatherings, and private celebrations of every size.
+          Call (804) 643-6900 and ask for the events team.
+        </div>
+      </details>
+      <details>
+        <summary>
+          <span>Do you accommodate dietary requests?</span>
+          <span class="faq-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="faq-body">
+          Almost always. Tell us when you reserve and the kitchen will plan around allergies, vegetarian preferences,
+          or specific celebrations. The wine list adapts too.
+        </div>
+      </details>
+      <details>
+        <summary>
+          <span>Do you offer take-out?</span>
+          <span class="faq-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        </summary>
+        <div class="faq-body">
+          Select dishes from the steakhouse menu are available for take-out by phone.
+          Call (804) 643-6900 to place an order; please allow 30–40 minutes during dinner service.
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section style="background:var(--ink); color:var(--cream);">
+  <div class="max-w-5xl mx-auto px-6 md:px-10 py-24 md:py-32 text-center">
+    <div class="eyebrow mb-6" style="color:var(--gold);">Reserve</div>
+    <h2 class="font-display leading-[0.98] mb-10" style="font-size:clamp(2.6rem,6.5vw,5.4rem);">
+      Have your night<br>at Bookbinders.
+    </h2>
+    <div class="flex flex-wrap items-center justify-center gap-4">
+      <a href="tel:8046436900" class="btn-gold inline-flex items-center px-9 py-5 text-[11px]">Reserve a Table</a>
+      <a href="tel:8046436900" class="btn-ghost-light inline-flex items-center px-9 py-5 text-[11px]">Call (804) 643-6900</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer style="background:var(--espresso); color:var(--cream); border-top:1px solid rgba(201,154,46,0.22);">
+  <div class="max-w-7xl mx-auto px-6 md:px-10 py-14">
+    <div class="grid md:grid-cols-3 gap-10 mb-10">
+      <div>
+        <img src="https://static.wixstatic.com/media/c3cf0c_bcd8551380464497861f3c253d090719~mv2.png/v1/crop/x_114,y_0,w_2065,h_1046/fill/w_336,h_159,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/ModernLogo-01.png"
+             alt="Bookbinders"
+             style="height:44px;width:auto;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.4));"
+             class="mb-5">
+        <p class="text-sm leading-relaxed max-w-xs" style="color:rgba(245,239,230,0.72);">
+          Old Original Bookbinder's Seafood &amp; Steakhouse. Three generations and counting.
+        </p>
+      </div>
+      <div>
+        <div class="eyebrow mb-4" style="color:var(--gold);">Visit</div>
+        <p class="text-sm leading-relaxed" style="color:rgba(245,239,230,0.82);">
+          2306 East Cary Street<br>Richmond, VA<br>
+          <a href="tel:8046436900" class="hover:underline" style="color:var(--cream);">(804) 643-6900</a>
+        </p>
+      </div>
+      <div>
+        <div class="eyebrow mb-4" style="color:var(--gold);">Reserve</div>
+        <a href="tel:8046436900" class="btn-gold inline-flex items-center px-6 py-3 text-[11px]">Reserve a Table</a>
+      </div>
+    </div>
+    <div class="rule-gold opacity-30 mb-8"></div>
+    <div class="flex flex-wrap items-center justify-between gap-4 text-xs" style="color:rgba(245,239,230,0.55);">
+      <p>&copy; <span id="year"></span> Bookbinders Richmond. All rights reserved.</p>
+      <p>Established Philadelphia · Now serving Tobacco Row, Richmond, VA</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var nav = document.getElementById('nav');
+    function onScroll() {
+      if (window.scrollY > 40) nav.classList.add('nav-solid');
+      else nav.classList.remove('nav-solid');
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    var yearEl = document.getElementById('year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+  })();
+</script>
+
+</body>
+</html>

@@ -91,6 +91,17 @@ function buildPersonalizedHeroHeadline(brief) {
 
   if (!isGeneric) return existingHeadline;
 
+  // Prefer the live site's hero headline if it's substantial and not just the brand name.
+  // This keeps real taglines like "Richmond's award-winning and historic steakhouse"
+  // from getting overwritten by a generic category template.
+  const siteIdentity = brief && brief.siteIdentity;
+  const scrapedHeadline = collapseSpaces((siteIdentity && siteIdentity.heroHeadline) || '');
+  const scrapedIsUsable = scrapedHeadline &&
+    scrapedHeadline.length >= 15 &&
+    scrapedHeadline.length <= 140 &&
+    (!brandName || scrapedHeadline.toLowerCase() !== brandName.toLowerCase());
+  if (scrapedIsUsable) return scrapedHeadline;
+
   // Generate a strong, location-specific headline
   const name = collapseSpaces(brand.name || '');
   const locSuffix = location ? ` in ${location}` : '';
@@ -129,6 +140,13 @@ function buildPersonalizedSubtitle(brief) {
       general:          `Rated ${ratingStr} ★ by ${reviewStr} customers. Reliable, professional, and always here for you.`
     };
     return catSubtitles[cat] || catSubtitles.general;
+  }
+
+  // Prefer the live site's tagline (meta description / og:description) when present.
+  const siteIdentity = brief && brief.siteIdentity;
+  const scrapedTagline = collapseSpaces((siteIdentity && (siteIdentity.heroTagline || siteIdentity.heroHeadline)) || '');
+  if (scrapedTagline && scrapedTagline.length > 20 && scrapedTagline.length <= 240) {
+    return scrapedTagline;
   }
 
   // Fall back to messaging
@@ -229,64 +247,79 @@ function buildTrustSignals(brief) {
 
 function buildServices(brief) {
   const niche   = toStringSafe(brief && brief.niche);
-  const isDental = isDentalNiche(niche);
   const cat     = nicheCategory(niche);
   const brand   = (brief && brief.brand) || {};
   const city    = collapseSpaces((brief && brief.contact && brief.contact.address && brief.contact.address.city) || '');
+  const pack    = (brief && brief.nichePack) || {};
+  const packCopy = pack.copy || {};
 
-  // Use scraped services from site_identity if available
+  // Filter nav-flavored entries out of scraped services (e.g. "Reservations",
+  // "Order Take-Out", "Gift Cards" are CTAs, not services).
+  const NAV_NOISE = /^(menu|home|about|contact|reservations|order(\s|-)?(take-?out|now|online)?|gift(\s)?cards?|store|shop|login|sign(\s)?in|cart|search|blog|news|locations?|hours|faq|book|reserve|call(\s)?us)$/i;
   const siteIdentity = brief && brief.siteIdentity;
-  const scrapedServices = siteIdentity && Array.isArray(siteIdentity.services) && siteIdentity.services.length > 2
-    ? siteIdentity.services.slice(0, 6).map(s => ({ title: s, description: '' }))
+  const rawScraped = siteIdentity && Array.isArray(siteIdentity.services) ? siteIdentity.services : [];
+  const cleanedScraped = rawScraped
+    .filter(s => s && typeof s === 'string' && !NAV_NOISE.test(s.trim()))
+    .slice(0, 6)
+    .map(s => ({ title: s.trim(), description: '' }));
+  const scrapedServices = cleanedScraped.length >= 3 ? cleanedScraped : null;
+
+  // Prefer niche-pack services (curated, on-brand for that vertical) when no
+  // scraped services are usable. Pack copy.services is the canonical source.
+  const packServices = Array.isArray(packCopy.services) && packCopy.services.length
+    ? packCopy.services.map(s => ({ title: s.title, description: s.description }))
     : null;
 
-  const servicesByCategory = {
-    healthcare_local: isDental ? [
-      { title: 'Cleanings & Checkups',    description: 'Preventive care to keep your smile healthy and catch issues early.' },
-      { title: 'Fillings & Restorations', description: 'Treat cavities and protect damaged teeth with natural-looking materials.' },
-      { title: 'Crowns & Bridges',        description: 'Durable solutions to restore function and appearance.' },
-      { title: 'Teeth Whitening',         description: 'Professional whitening for a noticeably brighter smile.' },
-      { title: 'Dental Implants',         description: 'Permanent, natural-looking replacement for missing teeth.' },
-      { title: 'Orthodontics',            description: 'Straighten teeth comfortably with modern options.' }
-    ] : [
+  // Last-resort fallback by category (kept minimal — packs should cover real niches).
+  const fallbackByCategory = {
+    healthcare_local: [
       { title: 'New Patient Consultation', description: 'Personalized assessment and care plan tailored to your needs.' },
-      { title: 'Preventive Care',          description: 'Proactive treatments to keep you healthy long-term.' },
-      { title: 'Specialized Treatments',   description: 'Expert care for complex conditions and ongoing management.' }
+      { title: 'Preventive Care',          description: 'Proactive treatments to keep you healthy long-term.' }
     ],
     home_service: [
       { title: 'Emergency Service',   description: 'Fast response when you need it most — same day available.' },
       { title: 'Free Estimates',      description: 'Upfront, transparent pricing before any work begins.' },
-      { title: 'Preventive Maintenance', description: 'Regular service to prevent costly problems down the road.' },
-      { title: 'Residential Service', description: 'Full-service solutions for homeowners in ' + (city || 'your area') + '.' },
-      { title: 'Commercial Service',  description: 'Reliable, scalable solutions for businesses of all sizes.' },
-      { title: 'Warranty & Guarantee', description: '100% satisfaction guaranteed on all work performed.' }
+      { title: 'Residential Service', description: 'Full-service solutions for homeowners in ' + (city || 'your area') + '.' }
     ],
     professional_service: [
       { title: 'Free Consultation',   description: 'Start with a no-obligation 30-minute strategy session.' },
-      { title: 'Custom Solutions',    description: 'Tailored plans designed around your specific goals.' },
-      { title: 'Ongoing Support',     description: 'Dedicated support to ensure lasting, measurable results.' }
+      { title: 'Custom Solutions',    description: 'Tailored plans designed around your specific goals.' }
     ],
     b2b_saas: [
       { title: 'Quick Setup',         description: 'Get up and running in minutes — no lengthy onboarding.' },
-      { title: 'Powerful Integrations', description: 'Connects with the tools your team already uses.' },
-      { title: 'Analytics & Reporting', description: 'Real-time insights to track performance and ROI.' },
-      { title: 'Enterprise Security',   description: 'Bank-grade security and compliance built in.' }
+      { title: 'Powerful Integrations', description: 'Connects with the tools your team already uses.' }
     ]
   };
 
-  const items = scrapedServices || servicesByCategory[cat] || servicesByCategory.healthcare_local;
+  const items = scrapedServices || packServices || fallbackByCategory[cat] || fallbackByCategory.healthcare_local;
+
+  // Slot category-appropriate scraped images onto cards: food first, then
+  // generic, then interior. Skip the hero URL and skip maps/documents/logos.
+  const library = (siteIdentity && Array.isArray(siteIdentity.imageLibrary)) ? siteIdentity.imageLibrary : [];
+  const heroUrl = (brief && brief.brand && brief.brand.heroImageUrl) || '';
+  const CARD_PRIORITY = ['food', 'generic', 'interior', 'exterior'];
+  const cardImages = library
+    .filter(img => img && img.src && img.src !== heroUrl && CARD_PRIORITY.includes(img.category || 'generic'))
+    .sort((a, b) => CARD_PRIORITY.indexOf(a.category || 'generic') - CARD_PRIORITY.indexOf(b.category || 'generic'))
+    .map(img => img.src);
+  if (cardImages.length) {
+    items.forEach((item, idx) => {
+      if (!item.image) item.image = cardImages[idx % cardImages.length];
+    });
+  }
+
+  // Heading comes from the niche pack copy.sectionHeadings.services when present.
+  const packHeadings = packCopy.sectionHeadings || {};
+  const fallbackHeading = cat === 'home_service' ? 'Our Services'
+                        : cat === 'b2b_saas'     ? 'What We Offer'
+                        : 'Our Services';
 
   return {
     id: 'services-1',
     type: 'services-grid',
     props: {
-      heading: isDental ? `Dental Services at ${collapseSpaces(brand.name || 'Our Practice')}`
-             : cat === 'home_service' ? 'Our Services'
-             : cat === 'b2b_saas'    ? 'What We Offer'
-             : 'Our Services',
-      subtitle: isDental
-        ? 'Comprehensive care for the whole family — from routine cleanings to advanced restorations.'
-        : 'Everything you need, delivered with professionalism and care.',
+      heading: packHeadings.services || fallbackHeading,
+      subtitle: 'Everything you need, delivered with professionalism and care.',
       items
     }
   };
@@ -331,7 +364,14 @@ function buildReviews(brief) {
     ]
   };
 
-  const reviews = reviewsByCategory[cat] || reviewsByCategory.healthcare_local;
+  // Source priority:
+  //   1. Real Google Places reviews if injected (brief.placesReviews)
+  //   2. Niche pack proof.reviewTemplates (restaurant pack has restaurant-flavored)
+  //   3. Category fallback above
+  const pack = (brief && brief.nichePack) || {};
+  const packReviews = pack.proof && Array.isArray(pack.proof.reviewTemplates) ? pack.proof.reviewTemplates : null;
+  const placesReviews = Array.isArray(brief && brief.placesReviews) && brief.placesReviews.length ? brief.placesReviews : null;
+  const reviews = placesReviews || packReviews || reviewsByCategory[cat] || reviewsByCategory.healthcare_local;
 
   const titleParts = [];
   if (ratingStr && reviewCount > 0) titleParts.push(`Rated ${ratingStr} ★`);
@@ -351,6 +391,49 @@ function buildReviews(brief) {
         ? `Join the ${reviewStr || 'many'} ${isDental ? 'patients' : 'customers'} who trust ${collapseSpaces(brand.name || 'us')}.`
         : `Real experiences from real ${isDental ? 'patients' : 'customers'}.`,
       reviews,
+      googleMapsUrl: contact.google_maps_url || ''
+    }
+  };
+}
+
+function buildAboutStory(brief) {
+  const siteIdentity = brief && brief.siteIdentity;
+  const aboutText = (siteIdentity && siteIdentity.aboutStory) || '';
+  const messaging = (brief && brief.messaging) || {};
+  // Use the scraped about paragraph when present; otherwise fall back to the
+  // elevator pitch (or skip entirely — handled by the renderer's v-if guard).
+  const body = (aboutText && aboutText.length >= 60)
+    ? aboutText
+    : collapseSpaces(messaging.elevator_pitch || '');
+  if (!body || body.length < 40) return null;
+  // Pick an interior/exterior photo for the side image when available.
+  const library = (siteIdentity && Array.isArray(siteIdentity.imageLibrary)) ? siteIdentity.imageLibrary : [];
+  const heroUrl = (brief && brief.brand && brief.brand.heroImageUrl) || '';
+  const sideImage = library.find(i => i && i.src && i.src !== heroUrl && (i.category === 'interior' || i.category === 'exterior'));
+  const pack = (brief && brief.nichePack) || {};
+  const heading = (pack.copy && pack.copy.sectionHeadings && pack.copy.sectionHeadings.about) || 'Our Story';
+  return {
+    id: 'about-story-1',
+    type: 'about-story',
+    props: { heading, body, image: sideImage ? sideImage.src : '' }
+  };
+}
+
+function buildHoursLocation(brief) {
+  const contact = (brief && brief.contact) || {};
+  const hours   = Array.isArray(brief && brief.hoursWeekday) ? brief.hoursWeekday : [];
+  const pack    = (brief && brief.nichePack) || {};
+  const heading = (pack.copy && pack.copy.sectionHeadings && pack.copy.sectionHeadings.hours) || 'Hours & Location';
+  const hasData = (contact.address && (contact.address.street || contact.address.city)) || hours.length || contact.phone;
+  if (!hasData) return null;
+  return {
+    id: 'hours-location-1',
+    type: 'hours-location',
+    props: {
+      heading,
+      address: contact.address || {},
+      hours,
+      phone: contact.phone || '',
       googleMapsUrl: contact.google_maps_url || ''
     }
   };
@@ -403,6 +486,24 @@ function buildHowItWorks(brief) {
         { title: 'Sign Up Free',      description: 'Create your account in under 2 minutes — no credit card required.' },
         { title: 'Connect Your Tools',description: 'Integrate with your existing stack in a few clicks.' },
         { title: 'See Results',       description: 'Track performance and ROI from day one with real-time dashboards.' }
+      ]
+    },
+    restaurant: {
+      heading: 'Reserve in Three Steps',
+      subtitle: 'A great evening is a few clicks away.',
+      items: [
+        { title: 'Pick a Date & Time', description: 'Use the reservation widget or call us — we will confirm right away.' },
+        { title: 'Tell Us About You',  description: 'Let us know about any dietary needs, special occasions, or seating preferences.' },
+        { title: 'Enjoy the Evening',  description: 'Arrive to a table ready for you. Hospitality, hand-crafted plates, and a great atmosphere.' }
+      ]
+    },
+    ecommerce: {
+      heading: 'Order in Three Steps',
+      subtitle: 'From browse to doorstep.',
+      items: [
+        { title: 'Browse the Collection', description: 'Find something you love — every product is curated and ready to ship.' },
+        { title: 'Quick Checkout',        description: 'Secure payment in seconds. Free shipping on qualifying orders.' },
+        { title: 'Fast Delivery',         description: 'Track your order from our door to yours. Easy returns if it is not quite right.' }
       ]
     }
   };
@@ -543,16 +644,26 @@ function buildFaq(brief) {
     ]
   };
 
-  const items = faqByCategory[cat] || faqByCategory.healthcare_local;
+  // Source priority:
+  //   1. Niche pack proof.objectionHandlers (restaurant pack has restaurant-flavored Q&A)
+  //   2. Category fallback above
+  const pack = (brief && brief.nichePack) || {};
+  const packFaq = pack.proof && Array.isArray(pack.proof.objectionHandlers) && pack.proof.objectionHandlers.length
+    ? pack.proof.objectionHandlers.map(o => ({ question: o.question, answer: o.answer }))
+    : null;
+  const items = packFaq || faqByCategory[cat] || faqByCategory.healthcare_local;
+
+  // Heading from niche pack copy.sectionHeadings when present.
+  const packHeadings = (pack.copy && pack.copy.sectionHeadings) || {};
+  const heading = packHeadings.faq ||
+    (isDental ? 'Patient FAQ' : 'Frequently Asked Questions');
 
   return {
     id: 'faq-1',
     type: 'faq',
     props: {
-      heading:  isDental ? 'Patient FAQ' : 'Frequently Asked Questions',
-      subtitle: isDental
-        ? 'Everything you need to know before your visit.'
-        : 'Common questions answered clearly.',
+      heading,
+      subtitle: 'Common questions answered clearly.',
       items
     }
   };
@@ -629,7 +740,8 @@ function buildCta(brief) {
     generate_leads:               'Get Your Free Quote Today',
     schedule_consultation:        'Book a Free Consultation',
     request_demo:                 'See It In Action — Request a Demo',
-    shop_now:                     'Start Shopping',
+    shop_now:                     'Shop Our Collection',
+    make_reservation:             'Reserve Your Table',
     get_in_touch:                 'Get In Touch Today'
   };
 
@@ -654,6 +766,33 @@ function generate(brief, options) {
   const b   = brief || {};
   const cat = nicheCategory(b.niche);
 
+  // If the brief's theme carries a slug-picked sectionOrder (set by
+  // brief-builder using the niche pack's sectionOrderVariants), assemble in
+  // that order so two leads in the same niche end up structurally different.
+  // Otherwise fall back to the canonical order below.
+  const customOrder = b && b.theme && Array.isArray(b.theme.sectionOrder) ? b.theme.sectionOrder : null;
+  if (customOrder) {
+    const builders = {
+      'hero':            () => buildHero(b),
+      'trust-signals':   () => buildTrustSignals(b),
+      'services-grid':   () => buildServices(b),
+      'reviews':         () => buildReviews(b),
+      'how-it-works':    () => buildHowItWorks(b),
+      'faq':             () => buildFaq(b),
+      'cta':             () => buildCta(b),
+      'upgrade-signal':  () => buildUpgradeSignal(b),
+      'about-story':     () => buildAboutStory(b),
+      'hours-location':  () => buildHoursLocation(b)
+    };
+    const out = [];
+    for (const t of customOrder) {
+      const fn = builders[t];
+      const built = fn ? fn() : null;
+      if (built) out.push(built);
+    }
+    return out;
+  }
+
   const sections = [];
 
   // 1. Hero — personalized, strong headline, booking CTA
@@ -676,14 +815,23 @@ function generate(brief, options) {
   // 6. How It Works — step-by-step, reduces friction
   sections.push(buildHowItWorks(b));
 
-  // 7. Virtual Assistant / Chat — 24/7 availability signal
-  sections.push(buildVirtualAssistant(b));
+  // 7. Virtual Assistant / Chat — 24/7 availability signal (healthcare/services only).
+  //    Restaurants, retail, etc. do their own front-of-house and don't need this card,
+  //    which leaks healthcare framing into other niches.
+  const vfdCat = nicheCategory(b && b.niche);
+  if (vfdCat === 'healthcare_local' || vfdCat === 'home_service' || vfdCat === 'professional_service' || vfdCat === 'b2b_saas') {
+    sections.push(buildVirtualAssistant(b));
+  }
 
   // 8. FAQ — answers objections, builds trust
   sections.push(buildFaq(b));
 
-  // 9. Upgrade Signal — subtle hint at the value of this improved site
-  sections.push(buildUpgradeSignal(b));
+  // 9. Upgrade Signal — internal sales copy ("Designed to convert more visitors...").
+  //    Off the customer-facing preview by default; surface in the strategy panel
+  //    instead. Re-enable explicitly by setting LANDING_BUILDER_SHOW_UPGRADE_SIGNAL=1.
+  if (process.env.LANDING_BUILDER_SHOW_UPGRADE_SIGNAL === '1') {
+    sections.push(buildUpgradeSignal(b));
+  }
 
   // 10. CTA — final conversion push
   sections.push(buildCta(b));

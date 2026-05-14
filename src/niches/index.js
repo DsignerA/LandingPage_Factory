@@ -30,6 +30,14 @@ const lawyerPack = {
   variants: require('./lawyer/variants')
 };
 
+const restaurantPack = {
+  config:   require('./restaurant/config'),
+  intents:  require('./restaurant/intents'),
+  proof:    require('./restaurant/proof'),
+  copy:     require('./restaurant/copy'),
+  variants: require('./restaurant/variants')
+};
+
 // Generic fallback pack for unrecognized niches
 const genericPack = {
   config: {
@@ -120,6 +128,7 @@ function resolveNichePack(niche) {
   if (/dental|dentist|orthodont|dmd|dds|tooth|teeth/.test(n)) return dentistPack;
   if (/hvac|heating|cooling|air\s*condition|furnace|boiler|plumb|roof|electric|pest|landscap|contractor|remodel|garage|floor|clean/.test(n)) return hvacPack;
   if (/law|attorney|legal|counsel/.test(n)) return lawyerPack;
+  if (/restaurant|cafe|coffee|bistro|eatery|steakhouse|seafood|pizz|pizzeria|grill|bar\b|pub|tavern|brasserie|brewery|bakery|diner|food|catering/.test(n)) return restaurantPack;
   if (/chiro|clinic|medical|medspa|spa|therapy|therapist|veterinary|vet/.test(n)) return dentistPack; // healthcare fallback
   if (/account|cpa|consult|coach|agency|insurance|realtor|real\s*estate/.test(n)) return lawyerPack; // professional service fallback
 
@@ -128,5 +137,5 @@ function resolveNichePack(niche) {
 
 module.exports = {
   resolveNichePack,
-  packs: { dentist: dentistPack, hvac: hvacPack, lawyer: lawyerPack, general: genericPack }
+  packs: { dentist: dentistPack, hvac: hvacPack, lawyer: lawyerPack, restaurant: restaurantPack, general: genericPack }
 };

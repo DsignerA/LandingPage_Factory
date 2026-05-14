@@ -17,3 +17,15 @@ previews/
 test-previews/
 
 *.log
+
+# Vendored open-design runtime: local install + runtime data live here, source is committed
+open-design/node_modules/
+open-design/**/node_modules/
+open-design/**/dist/
+open-design/.od/
+open-design/.tmp/
+open-design/.next/
+open-design/**/.next/
+
+# Reference clone (read-only mirror of upstream)
+../open-design-ref/

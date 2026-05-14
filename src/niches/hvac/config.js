@@ -22,5 +22,17 @@ module.exports = {
     'photo-1611095961170-6ae2bc497acf',
     'photo-1556906781-23f839fa9e3e',
     'photo-1605902711622-cfb43c44367f'
+  ],
+
+  // Opt-in design-system aesthetics (Apache-2.0 vendored from open-design).
+  designSystemPool: [
+    'bold',
+    'corporate',
+    'professional',
+    'enterprise',
+    'modern',
+    'mission-control',
+    'trading-terminal',
+    'hud'
   ]
 };
