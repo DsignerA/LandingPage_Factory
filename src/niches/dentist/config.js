@@ -25,5 +25,18 @@ module.exports = {
     'photo-1532922970315-2da17d93c07e',
     'photo-1588776814546-1d2ca93e8278',
     'photo-1551601651-cb6b5d24d8a0'
+  ],
+
+  // Opt-in design-system aesthetics (Apache-2.0 vendored from open-design).
+  // Slug-hashed pick when no scraped brand palette is available.
+  designSystemPool: [
+    'clean',
+    'apple',
+    'minimal',
+    'sleek',
+    'modern',
+    'friendly',
+    'professional',
+    'spacious'
   ]
 };

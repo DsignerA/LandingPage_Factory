@@ -76,6 +76,10 @@
   register('trust-signals',  'TrustSignalsSection');
   register('upgrade-signal', 'UpgradeSignalSection');
 
+  // ── Restaurant-native sections (extract real client data) ─────────────────
+  register('about-story',    'AboutStorySection');
+  register('hours-location', 'HoursLocationSection');
+
   // Expose globally
   if (typeof window !== 'undefined') {
     window.SectionRegistry = registry;

@@ -18,7 +18,20 @@
     "design:build-prompt": "node scripts/build-design-director-prompt.js",
     "design:check-prompt": "node scripts/build-design-director-prompt.js --check",
     "design:spec": "designmd spec",
-    "design:export-tailwind": "designmd export --format css-tailwind"
+    "design:export-tailwind": "designmd export --format css-tailwind",
+    "compare": "node scripts/compare-screenshots.js",
+    "variants": "node src/cli/generate-variants.js",
+    "qa": "node scripts/vision-qa.js",
+    "packet": "node src/cli/build-packet.js",
+    "preview:batch": "node src/cli/run-batch.js",
+    "approvals": "node src/cli/build-approval-queue.js",
+    "serve": "python3 -m http.server 8765",
+    "od:install": "cd open-design && pnpm install",
+    "od:dev": "cd open-design && pnpm tools-dev run web",
+    "od:daemon": "cd open-design && pnpm tools-dev start web --daemon-port 17456 --web-port 17573",
+    "od:status": "cd open-design && pnpm tools-dev status --json",
+    "od:stop": "cd open-design && pnpm tools-dev stop",
+    "od:typecheck": "cd open-design && pnpm typecheck"
   },
   "dependencies": {
     "@google/design.md": "^0.1.1",

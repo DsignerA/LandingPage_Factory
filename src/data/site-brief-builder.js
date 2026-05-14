@@ -11,6 +11,27 @@
 
 'use strict';
 
+const { resolveNichePack } = require('../niches');
+const { loadDesignSystem } = require('../design-systems/parser');
+
+/**
+ * Deterministic pick from a list. If `indexOverride` is a number we use it
+ * directly (round-robin) — used by the multi-variant CLI to force v0/v1/v2
+ * to pick different layouts. Otherwise we hash the slug so each client gets
+ * a different but reproducible variant.
+ */
+function pickFromSlug(slug, list, indexOverride) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  if (typeof indexOverride === 'number' && Number.isFinite(indexOverride)) {
+    return list[((indexOverride % list.length) + list.length) % list.length];
+  }
+  const s = String(slug || '');
+  if (!s) return list[0];
+  let hash = 5381;
+  for (let i = 0; i < s.length; i++) hash = ((hash << 5) + hash) ^ s.charCodeAt(i);
+  return list[Math.abs(hash) % list.length];
+}
+
 function toStringSafe(v) {
   if (v == null) return '';
   if (typeof v === 'string') return v;
@@ -94,7 +115,7 @@ function choosePrimaryGoal(lead) {
   if (cat === 'professional_service') return 'schedule_consultation';
   if (cat === 'b2b_saas') return 'request_demo';
   if (cat === 'ecommerce') return 'shop_now';
-  if (cat === 'restaurant') return 'shop_now';
+  if (cat === 'restaurant') return 'make_reservation';
 
   if (opps.some(x => /booking|calendar|appointment/.test(x))) return 'book_appointments';
   if (opps.some(x => /chat|lead|form|quote|call/.test(x))) return 'generate_leads';
@@ -111,6 +132,7 @@ function goalToPrimaryCta(goal) {
     case 'schedule_consultation':       return { label: 'Book Free Consultation', href: '#contact' };
     case 'request_demo':                return { label: 'Request a Demo', href: '#contact' };
     case 'shop_now':                    return { label: 'Order Now', href: '#order' };
+    case 'make_reservation':            return { label: 'Reserve a Table', href: '#reservations' };
     default:                            return { label: 'Contact Us', href: '#contact' };
   }
 }
@@ -289,17 +311,23 @@ function deriveTheme(cat, goal, options) {
   };
   const tone = options.defaultTone || toneMap[cat] || 'trustworthy';
 
-  // heroStyle: centered for B2B SaaS / professional, split for local/service
+  // heroStyle: keys MUST match VARIANT_MAP in src/ui/hero.js
+  //   split_premium | centered | media_background | service_quote_split | centered_product | product_demo
   const heroStyleMap = {
-    healthcare_local:    'split',
-    home_service:        'split',
+    healthcare_local:    'split_premium',
+    home_service:        'service_quote_split',
     professional_service:'centered',
-    b2b_saas:            'centered',
-    ecommerce:           'media-driven',
-    restaurant:          'media-driven',
-    general:             'split'
+    b2b_saas:            'product_demo',
+    ecommerce:           'media_background',
+    restaurant:          'media_background',
+    general:             'split_premium'
   };
-  const heroStyle = options.heroStyle || heroStyleMap[cat] || 'split';
+  // The niche pack can supply a `heroVariants` array — different leads in the
+  // same niche pick deterministically by slug so they don't all look identical.
+  const heroStyle = options.heroStyle ||
+                    pickFromSlug(options.slug, options.heroVariantPool, options.variantIndex) ||
+                    heroStyleMap[cat] ||
+                    'split_premium';
 
   // motionProfile: calm for healthcare, expressive for restaurant/ecommerce
   const motionMap = {
@@ -319,7 +347,10 @@ function deriveTheme(cat, goal, options) {
     b2b_saas:            'mesh_gradient',
     general:             'soft_gradient'
   };
-  const backgroundEffect = options.backgroundEffect || bgMap[cat] || 'soft_gradient';
+  const backgroundEffect = options.backgroundEffect ||
+                           pickFromSlug(options.slug, options.backgroundEffectPool, options.variantIndex) ||
+                           bgMap[cat] ||
+                           'soft_gradient';
 
   return { palette, tone, heroStyle, motionProfile, backgroundEffect };
 }
@@ -341,7 +372,17 @@ function buildSiteBrief(normalizedLead, options = {}) {
     const count = digits.replace(/\D/g, '').length;
     return count >= 7 ? digits : '';
   }
-  const sanitizedPhone = sanitizePhone(lead.phone);
+  // Sources for real data, in priority order:
+  //   1. brief.siteIdentity.jsonLd (schema.org structured data — free, scraped)
+  //   2. options.placesData (Google Places — free under quota, requires API key)
+  //   3. body-regex / lead-provided / empty
+  const jsonLd = options && options.siteIdentity && options.siteIdentity.jsonLd;
+  const placesData = options && options.placesData;
+
+  const scrapedPhone  = sanitizePhone(options && options.siteIdentity && options.siteIdentity.phone);
+  const jsonLdPhone   = sanitizePhone(jsonLd && jsonLd.telephone);
+  const placesPhone   = sanitizePhone(placesData && placesData.phone);
+  const sanitizedPhone = sanitizePhone(lead.phone) || jsonLdPhone || placesPhone || scrapedPhone;
 
   let locationOut = collapseSpaces(lead.location) || '';
   if (!locationOut) {
@@ -359,16 +400,67 @@ function buildSiteBrief(normalizedLead, options = {}) {
     ? (sanitizedPhone ? { label: 'Call Office', href: `tel:${sanitizedPhone}` } : { label: 'Contact Us', href: '#contact' })
     : defaultSecondaryCta(sectionsHint, cat, sanitizedPhone);
 
-  // Derive design tokens deterministically from niche + goal
-  const theme = deriveTheme(cat, primary_goal, options);
+  // Resolve the niche pack first — its config carries the variation pools
+  // (heroVariants, accentStyles, sectionOrderVariants etc.) that the design
+  // resolver needs to pick deterministically per slug.
+  const nichePack = resolveNichePack(lead.niche);
+  const packConfig = (nichePack && nichePack.config) || {};
+  const slugForPick = collapseSpaces(lead.slug || lead.business_name || lead.practice_name || '');
+
+  // Filter the hero-variant pool by what assets we actually have. A client with
+  // a strong scraped hero image should bias toward image-led hero variants; a
+  // client with no usable photo should bias toward text-led ones. This makes
+  // variation content-aware so we don't bury a great photo behind a form card.
+  const IMAGE_VARIANTS = new Set(['media_background']);
+  const TEXT_VARIANTS  = new Set(['centered', 'split_premium', 'centered_product', 'product_demo']);
+  const scrapedHeroImg = options && options.siteIdentity && options.siteIdentity.ogImage;
+  const filterHeroPool = (pool) => {
+    if (!Array.isArray(pool) || pool.length === 0) return pool;
+    if (scrapedHeroImg) {
+      // Weight image-using variants higher so a great scraped photo actually
+      // gets used. Duplicating in the pool gives image variants ~2x odds while
+      // still allowing a text variant to be picked for some slugs (variation).
+      const imageVariants = pool.filter(v => IMAGE_VARIANTS.has(v));
+      const otherImageFriendly = pool.filter(v => v === 'split_premium');
+      const weighted = [...imageVariants, ...imageVariants, ...otherImageFriendly];
+      return weighted.length ? weighted : pool;
+    }
+    const textFriendly = pool.filter(v => TEXT_VARIANTS.has(v));
+    return textFriendly.length ? textFriendly : pool;
+  };
+
+  // Derive design tokens deterministically from niche + goal + slug
+  // (variantIndex override forces a specific position in each pool — used by
+  // the multi-variant CLI so v0/v1/v2 pick visually different layouts.)
+  const variantIndex = (options && typeof options.variantIndex === 'number') ? options.variantIndex : undefined;
+  const themeOptions = Object.assign({}, options, {
+    slug: slugForPick,
+    variantIndex,
+    heroVariantPool:    filterHeroPool(packConfig.heroVariants),
+    accentStylePool:    packConfig.accentStyles,
+    backgroundEffectPool: packConfig.backgroundEffects
+  });
+  const theme = deriveTheme(cat, primary_goal, themeOptions);
+  theme.sectionOrder = pickFromSlug(slugForPick, packConfig.sectionOrderVariants, variantIndex) || null;
+  theme.accentStyle  = pickFromSlug(slugForPick, packConfig.accentStyles, variantIndex) || 'none';
+  theme.cardStyle    = pickFromSlug(slugForPick, packConfig.cardStyles, variantIndex)   || 'soft_elevated';
+
+  // Pick an opt-in design system aesthetic from the niche pack's pool. Used by
+  // the renderer as a palette fallback when no scraped brand colors exist, and
+  // by the LLM-rewrite path so generated copy matches the visual voice.
+  const designSystemName = options.designSystemPreset ||
+                           pickFromSlug(slugForPick, packConfig.designSystemPool, variantIndex);
+  const designSystem = designSystemName ? loadDesignSystem(designSystemName) : null;
 
   const brief = {
     lead_id: lead.lead_id || null,
     slug: lead.slug || null,
     // Brand name prefers practice_name over business_name. Falls back to generic.
+    // logoUrl is the scraped brand mark (image URL) when site-analyzer found one.
     brand: {
       name: collapseSpaces(lead.practice_name) || collapseSpaces(lead.business_name) || 'Your Business',
-      heroImageUrl: null
+      heroImageUrl: null,
+      logoUrl: (options && options.siteIdentity && options.siteIdentity.logoUrl) || null
     },
     niche: collapseSpaces(lead.niche) || 'general',
     location: locationOut,
@@ -402,17 +494,49 @@ function buildSiteBrief(normalizedLead, options = {}) {
     contact: {
       phone: sanitizedPhone || '',
       address: {
-        street: collapseSpaces(lead.address) || '',
-        city: collapseSpaces(lead.city) || '',
-        state: collapseSpaces(lead.state) || ''
+        street: (jsonLd && jsonLd.address && collapseSpaces(jsonLd.address.street)) ||
+                collapseSpaces(lead.address) ||
+                (placesData && collapseSpaces(placesData.address)) ||
+                '',
+        city:   (jsonLd && jsonLd.address && collapseSpaces(jsonLd.address.city)) ||
+                collapseSpaces(lead.city) ||
+                '',
+        state:  (jsonLd && jsonLd.address && collapseSpaces(jsonLd.address.state)) ||
+                collapseSpaces(lead.state) ||
+                ''
       },
-      google_maps_url: toStringSafe(lead.google_maps_url) || null,
+      google_maps_url: toStringSafe(lead.google_maps_url) ||
+                       (options && options.placesData && toStringSafe(options.placesData.google_maps_url)) ||
+                       null,
       website_url: toStringSafe(lead.website_url) || null
     },
     trust: {
-      rating: lead.rating != null ? Number(lead.rating) : null,
-      review_count: lead.review_count != null ? Number(lead.review_count) : null
+      // Real rating: JSON-LD > Places > lead-provided.
+      rating: (jsonLd && typeof jsonLd.rating === 'number') ? jsonLd.rating
+            : (placesData && typeof placesData.rating === 'number') ? placesData.rating
+            : (lead.rating != null ? Number(lead.rating) : null),
+      review_count: (jsonLd && typeof jsonLd.reviewCount === 'number') ? jsonLd.reviewCount
+                  : (placesData && typeof placesData.review_count === 'number') ? placesData.review_count
+                  : (lead.review_count != null ? Number(lead.review_count) : null)
     },
+    // Real reviews: JSON-LD > Places > empty. Upgrade provider prefers these
+    // over niche-pack templates when non-empty. Kept under the `placesReviews`
+    // field name for back-compat with the upgrade provider's check.
+    placesReviews: (jsonLd && Array.isArray(jsonLd.reviews) && jsonLd.reviews.length)
+      ? jsonLd.reviews
+      : (placesData && Array.isArray(placesData.reviews) && placesData.reviews.length
+          ? placesData.reviews
+          : []),
+    // Hours: JSON-LD > Places > empty.
+    hoursWeekday: (jsonLd && Array.isArray(jsonLd.hours) && jsonLd.hours.length)
+      ? jsonLd.hours
+      : (placesData && Array.isArray(placesData.hoursWeekday) && placesData.hoursWeekday.length
+          ? placesData.hoursWeekday
+          : []),
+    // Presence flags for embedded review/reservation widgets on the live site.
+    widgets: (options && options.siteIdentity && options.siteIdentity.widgets) || null,
+    // Price range hint from JSON-LD ($, $$, $$$ etc.) when available.
+    priceRange: (jsonLd && jsonLd.priceRange) || '',
     audit: {
       website_status: toStringSafe(lead.website_status) || null,
       website_quality: toStringSafe(lead.website_quality) || null,
@@ -428,35 +552,55 @@ function buildSiteBrief(normalizedLead, options = {}) {
     // Site analysis results (Steps 1 & 2 of the upgrade model)
     // Populated by site-analyzer.js when a website URL is available
     siteIdentity:     (options && options.siteIdentity)     || null,
-    siteOpportunities:(options && options.siteOpportunities)|| sanitizeList(lead.opportunities, 8)
+    siteOpportunities:(options && options.siteOpportunities)|| sanitizeList(lead.opportunities, 8),
+
+    // Niche pack: resolved copy/proof/intents/variants for the lead's niche.
+    // Generators read pack.copy.sectionHeadings, pack.copy.ctaLabels, pack.proof.reviewTemplates,
+    // pack.copy.services etc. instead of hardcoding per-niche English.
+    nichePack,
+
+    // Active design-system preset, slug-picked from the niche pack's pool.
+    // Carries:
+    //   - name        (slug, e.g. 'claude' or 'warm-editorial')
+    //   - title       (human title from the DESIGN.md H1)
+    //   - palette     ({ bg, primary, accent, text }) — used by the renderer
+    //                 as a fallback when no scraped brand colors exist
+    //   - fonts       ({ heading, body })
+    //   - body        (full DESIGN.md prose, fed to llm-rewrite when active)
+    // null when the niche pack doesn't define a designSystemPool.
+    designSystem
   };
 
-  // Determine hero image URL from niche config or existing audit data.
-  // Attempt to load hero image candidates from the niche config. Use slug hash to pick one.
+  // Determine hero image URL. Priority:
+  //   1. The live site's Open Graph / Twitter image (real brand imagery wins).
+  //   2. A niche-specific Unsplash candidate (deterministic by slug).
+  //   3. nothing.
   (function assignHeroImage() {
     try {
-      const crypto = require('crypto');
-      const nicheKey = collapseSpaces(lead.niche).toLowerCase() || '';
-      const configPath = '../niches/' + nicheKey + '/config.js';
-      const nicheConfig = require(configPath);
-      const candidates = Array.isArray(nicheConfig.heroImageCandidates) ? nicheConfig.heroImageCandidates : [];
       let url = null;
-      if (candidates.length) {
-        const slug = toStringSafe(lead.slug || lead.practice_name || lead.business_name || '');
-        // Compute a simple deterministic hash from slug
-        const hash = crypto.createHash('md5').update(slug).digest('hex');
-        const intVal = parseInt(hash.slice(0, 8), 16);
-        const idx = intVal % candidates.length;
-        const photoId = candidates[idx];
-        url = 'https://images.unsplash.com/' + photoId + '?w=1200&h=900&fit=crop&q=80&auto=format';
+
+      const scrapedOg = options && options.siteIdentity && options.siteIdentity.ogImage;
+      const og = scrapedOg || lead.ogImageUrl || lead.og_image_url || null;
+      if (og && typeof og === 'string' && og.startsWith('http')) {
+        url = og;
       }
-      // Fallback: use Open Graph image from audit if available
+
       if (!url) {
-        const og = lead.ogImageUrl || lead.og_image_url || null;
-        if (og && typeof og === 'string' && og.startsWith('http')) {
-          url = og;
+        const crypto = require('crypto');
+        const nicheKey = collapseSpaces(lead.niche).toLowerCase() || '';
+        const configPath = '../niches/' + nicheKey + '/config.js';
+        const nicheConfig = require(configPath);
+        const candidates = Array.isArray(nicheConfig.heroImageCandidates) ? nicheConfig.heroImageCandidates : [];
+        if (candidates.length) {
+          const slug = toStringSafe(lead.slug || lead.practice_name || lead.business_name || '');
+          const hash = crypto.createHash('md5').update(slug).digest('hex');
+          const intVal = parseInt(hash.slice(0, 8), 16);
+          const idx = intVal % candidates.length;
+          const photoId = candidates[idx];
+          url = 'https://images.unsplash.com/' + photoId + '?w=1200&h=900&fit=crop&q=80&auto=format';
         }
       }
+
       if (url) {
         brief.brand.heroImageUrl = url;
       }

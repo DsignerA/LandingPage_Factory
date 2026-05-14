@@ -171,12 +171,54 @@
   };
 
   // ── Component ───────────────────────────────────────────────────────────────
+  //
+  // Per-instance variants: the template is chosen at render time, not module
+  // load. Selection priority: section-level `variant` prop → page-level
+  // window.pageTheme.heroVariant → split_premium. This lets a page mix multiple
+  // hero variants and lets the multi-variant CLI render different layouts
+  // without reloading the script.
 
-  var activeVariant = getHeroVariant();
-  var activeTemplate = VARIANT_MAP[activeVariant] || SPLIT_PREMIUM;
+  function variantTemplateFor(name) {
+    var v = String(name || '').toLowerCase();
+    if (v && VARIANT_MAP[v]) return VARIANT_MAP[v];
+    var fallback = getHeroVariant();
+    return VARIANT_MAP[fallback] || SPLIT_PREMIUM;
+  }
+
+  // Build sub-components, one per variant. The top-level HeroSection dispatches
+  // via Vue's dynamic `<component :is>` so per-instance variant resolution works.
+  function makeVariantComponent(template) {
+    return {
+      props: {
+        id: String,
+        sectionId: String,
+        title: String,
+        subtitle: String,
+        label: String,
+        primaryCta: Object,
+        secondaryCta: Object,
+        trustProps: Array,
+        highlights: Array,
+        pills: Array,
+        bullets: Array,
+        cardHeading: String,
+        trustLine: String,
+        heroBgStyle: Object
+      },
+      template: template
+    };
+  }
+
+  var VARIANT_COMPONENTS = {};
+  for (var key in VARIANT_MAP) {
+    if (Object.prototype.hasOwnProperty.call(VARIANT_MAP, key)) {
+      VARIANT_COMPONENTS['hero-' + key.replace(/_/g, '-')] = makeVariantComponent(VARIANT_MAP[key]);
+    }
+  }
 
   var HeroSection = {
     name: 'HeroSection',
+    components: VARIANT_COMPONENTS,
     props: {
       id: String,
       type: String,
@@ -196,6 +238,12 @@
       pills: function() { return (this.props && this.props.pills) || []; },
       bullets: function() { return (this.props && this.props.bullets) || []; },
       cardHeading: function() { return (this.props && this.props.cardHeading) || ''; },
+      variantTag: function() {
+        var v = String(this.variant || '').toLowerCase();
+        if (v && VARIANT_MAP[v]) return 'hero-' + v.replace(/_/g, '-');
+        var fallback = getHeroVariant();
+        return 'hero-' + fallback.replace(/_/g, '-');
+      },
       trustLine: function() {
         // Prefer an explicit trustLine passed via props. Fallback to a default string.
         return (this.props && this.props.trustLine) || 'No commitment required';
@@ -232,7 +280,25 @@
         return base;
       }
     },
-    template: activeTemplate
+    template: `
+      <component
+        :is="variantTag"
+        :id="id"
+        :section-id="sectionId"
+        :title="title"
+        :subtitle="subtitle"
+        :label="label"
+        :primary-cta="primaryCta"
+        :secondary-cta="secondaryCta"
+        :trust-props="trustProps"
+        :highlights="highlights"
+        :pills="pills"
+        :bullets="bullets"
+        :card-heading="cardHeading"
+        :trust-line="trustLine"
+        :hero-bg-style="heroBgStyle"
+      />
+    `
   };
 
   if (typeof window !== 'undefined') {
